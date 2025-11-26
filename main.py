@@ -190,58 +190,8 @@ def send_email(name, email, amount, payment_id, report_type, assessment_link, pa
     except Exception as e:
         logging.info(f"EMAIL FAILED → {e}")
 
-@app.route('/razorpay-webhook', methods=['POST'])
-def webhook():
-    data = request.get_json(force=True) or {}
-    if not data or data.get('event') != 'payment.captured':
-        return "ok", 200
-
-    p = data['payload']['payment']['entity']
-    notes = p.get('notes', {})
-
-    # Extract customer data
-    name         = notes.get('name', p.get('contact', 'Customer'))
-    display_name = name
-    email        = p.get('email') or notes.get('user_email', 'no-email@bodhih.com')
-    user_email   = notes.get('user_email', email)  # Email for sending confirmation
-    gender       = notes.get('gender', 'Male')
-    description  = p.get('description', '')
-    amount       = p['amount'] / 100
-    order_id     = p.get('order_id', '')
-    payment_method = p.get('method', '').upper()
-    
-    # Extract product details from notes (passed by Odoo/Razorpay)
-    product_id   = notes.get('product_id', '')
-    product_name = notes.get('product_name', description)
-    product_type = notes.get('product_type', '').lower()
-    
-    # Extract report type from product name
-    report_type = extract_report_type(product_name or description)
-
-    # Log payment details
-    logging.info("\n" + "═" * 95)
-    logging.info("NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM")
-    logging.info("═" * 95)
-    logging.info(f"Time           : {datetime.now().strftime('%d %b %Y, %I:%M %p')}")
-    logging.info(f"Amount         : ₹{amount:,.2f}")
-    logging.info(f"Payment ID     : {p['id']}")
-    logging.info(f"Order ID       : {order_id}")
-    logging.info(f"Customer Name  : {name}")
-    logging.info(f"Email          : {email}")
-    logging.info(f"Phone          : {p.get('contact', '—')}")
-    logging.info(f"Payment Method : {payment_method}")
-    logging.info(f"Card/Network   : {p.get('card', {}).get('network', '—') if p.get('card') else '—'}")
-    logging.info(f"Description    : {description}")
-    logging.info(f"Product ID     : {product_id or '—'}")
-    logging.info(f"Product Name   : {product_name or '—'}")
-    logging.info(f"Product Type   : {product_type or '—'}")
-    logging.info(f"Report Type    : {report_type}")
-    
-    # Log raw payload snippet for debugging
-    raw_payload = json.dumps(data, indent=2)
-    logging.info(f"Full Raw Payload (first 800 chars):")
-    logging.info(raw_payload[:800])
-
+def process_single_user(name, display_name, email, user_email, gender, product_name, product_type, report_type, amount, payment_id, description):
+    """Process registration and email for a single user"""
     # Route to appropriate API based on product type
     assessment_link = None
     api_type = None
@@ -260,10 +210,76 @@ def webhook():
     # Send email if registration succeeded
     if assessment_link:
         password = generate_password()
-        send_email(name, user_email, amount, p['id'], report_type, assessment_link, password)
-        logging.info(f"SUCCESS: {api_type} Account Created + Email Sent")
+        send_email(name, user_email, amount, payment_id, report_type, assessment_link, password)
+        logging.info(f"✓ {name}: {api_type} Account Created + Email Sent to {user_email}")
     else:
-        logging.info(f"{api_type} REGISTRATION FAILED — No email sent")
+        logging.info(f"✗ {name}: {api_type} REGISTRATION FAILED — No email sent")
+
+@app.route('/razorpay-webhook', methods=['POST'])
+def webhook():
+    data = request.get_json(force=True) or {}
+    if not data or data.get('event') != 'payment.captured':
+        return "ok", 200
+
+    p = data['payload']['payment']['entity']
+    notes = p.get('notes', {})
+    description  = p.get('description', '')
+    amount       = p['amount'] / 100
+    order_id     = p.get('order_id', '')
+    payment_method = p.get('method', '').upper()
+
+    logging.info("\n" + "═" * 95)
+    logging.info("NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM")
+    logging.info("═" * 95)
+    logging.info(f"Time           : {datetime.now().strftime('%d %b %Y, %I:%M %p')}")
+    logging.info(f"Amount         : ₹{amount:,.2f}")
+    logging.info(f"Payment ID     : {p['id']}")
+    logging.info(f"Order ID       : {order_id}")
+    logging.info(f"Phone          : {p.get('contact', '—')}")
+    logging.info(f"Payment Method : {payment_method}")
+    logging.info(f"Description    : {description}")
+    
+    # Log raw payload snippet for debugging
+    raw_payload = json.dumps(data, indent=2)
+    logging.info(f"Full Raw Payload (first 800 chars):")
+    logging.info(raw_payload[:800])
+
+    # Check if notes is a list (multiple users) or dict (single user)
+    if isinstance(notes, list):
+        # Multiple users - process each one
+        logging.info(f"\n→ MULTIPLE USERS DETECTED: {len(notes)} users to register")
+        for user_data in notes:
+            if isinstance(user_data, dict):
+                name = user_data.get('name', 'Customer')
+                display_name = name
+                email = user_data.get('email', p.get('email', 'no-email@bodhih.com'))
+                user_email = user_data.get('user_email', email)
+                gender = user_data.get('gender', 'Male')
+                product_name = user_data.get('product_name', description)
+                product_type = user_data.get('product_type', '').lower()
+                report_type = extract_report_type(product_name or description)
+                
+                logging.info(f"\n→ Processing User: {name} ({user_email})")
+                process_single_user(name, display_name, email, user_email, gender, product_name, product_type, report_type, amount, p['id'], description)
+    else:
+        # Single user - original logic
+        name         = notes.get('name', p.get('contact', 'Customer'))
+        display_name = name
+        email        = p.get('email') or notes.get('user_email', 'no-email@bodhih.com')
+        user_email   = notes.get('user_email', email)
+        gender       = notes.get('gender', 'Male')
+        product_id   = notes.get('product_id', '')
+        product_name = notes.get('product_name', description)
+        product_type = notes.get('product_type', '').lower()
+        report_type = extract_report_type(product_name or description)
+
+        logging.info(f"Customer Name  : {name}")
+        logging.info(f"Email          : {email}")
+        logging.info(f"Product ID     : {product_id or '—'}")
+        logging.info(f"Product Name   : {product_name or '—'}")
+        logging.info(f"Report Type    : {report_type}")
+        
+        process_single_user(name, display_name, email, user_email, gender, product_name, product_type, report_type, amount, p['id'], description)
 
     logging.info("═" * 95 + "\n")
     return "OK", 200
