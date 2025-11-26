@@ -1,1 +1,56 @@
-
+{
+  "comment": "Sales Order ID to Assessment Type Mapping",
+  "mappings": {
+    "SO-05205-2": {
+      "product_name": "DISC Asia+ Basic Report",
+      "assessment_type": "disc",
+      "report_type": "Basic"
+    },
+    "SO-05205-1": {
+      "product_name": "DISC Asia+ Advanced Report",
+      "assessment_type": "disc",
+      "report_type": "Advanced"
+    },
+    "SO-05205-3": {
+      "product_name": "DISC Asia+ Managerial Report",
+      "assessment_type": "disc",
+      "report_type": "Managerial"
+    },
+    "SO-05305-3": {
+      "product_name": "Harrason Basic Report",
+      "assessment_type": "harrason",
+      "report_type": "Basic"
+    },
+    "SO-05305-1": {
+      "product_name": "Harrason Career Development Report",
+      "assessment_type": "harrason",
+      "report_type": "Career"
+    },
+    "SO-05205-4": {
+      "product_name": "DISC Asia+ Sales Report",
+      "assessment_type": "disc",
+      "report_type": "Sales"
+    },
+    "SO-05305-2": {
+      "product_name": "Harrason Leadership Report",
+      "assessment_type": "harrason",
+      "report_type": "Leadership"
+    },
+    "SO-05405-1": {
+      "product_name": "DISC Asia+ Career Report",
+      "assessment_type": "disc",
+      "report_type": "Career"
+    },
+    "SO-05405-2": {
+      "product_name": "DISC Asia+ Team Build Report",
+      "assessment_type": "disc",
+      "report_type": "Team Build"
+    },
+    "SO-05505-1": {
+      "product_name": "Harrason Communication Report",
+      "assessment_type": "harrason",
+      "report_type": "Communication"
+    }
+  },
+  "instructions": "Add new sales order mappings in the format: \"SO-XXXXX-Y\": { \"product_name\": \"...\", \"assessment_type\": \"disc|harrason\", \"report_type\": \"...\" }"
+}
