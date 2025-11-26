@@ -1,5 +1,5 @@
-# main.py → FINAL AUTOMATION FOR BODHIH.COM (LIVE & PERFECT)
-# Razorpay Payment → Extract Type from Product → Register on DISC Asia+ → Send Email
+# main.py → RAZORPAY WEBHOOK WITH SO ID SCHEMA MAPPING
+# Receives payment → Looks up SO in schema → Routes to DISC/Harrason → Sends email
 
 from flask import Flask, request
 import requests
@@ -18,83 +18,44 @@ app = Flask(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 DISC_API_URL       = os.environ.get("DISC_API_URL", "https://discapi.discasiaplus.org/api/DISC/Respondent_and_Report_Details_Bodhih")
-DISC_CREDENTIAL    = os.environ.get("DISC_CREDENTIAL", "vezHgzd1EueI3clvF/1kNnMyCITD9UwC")
+DISC_CREDENTIAL    = os.environ.get("DISC_CREDENTIAL", "")
 
 HARRASON_API_URL   = os.environ.get("HARRASON_API_URL", "")
 HARRASON_CREDENTIAL = os.environ.get("HARRASON_CREDENTIAL", "")
 
-SMTP_EMAIL         = os.environ.get("SMTP_EMAIL", "info@inowix.in")
-SMTP_PASSWORD      = os.environ.get("SMTP_PASSWORD", "jxrmhihcvqlqojqa")
+SMTP_EMAIL         = os.environ.get("SMTP_EMAIL", "")
+SMTP_PASSWORD      = os.environ.get("SMTP_PASSWORD", "")
 FROM_NAME          = os.environ.get("FROM_NAME", "Bodhi Training Solutions")
 REPLY_TO_EMAIL     = os.environ.get("REPLY_TO_EMAIL", "support@bodhih.com")
 
 RAZORPAY_KEY_ID    = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 
+# Load SO mapping schema
+SO_MAPPING = {}
+try:
+    with open("so_mapping.json", "r") as f:
+        data = json.load(f)
+        SO_MAPPING = data.get("mappings", {})
+        logging.info(f"✓ Loaded SO mapping schema with {len(SO_MAPPING)} entries")
+except Exception as e:
+    logging.info(f"⚠ Could not load SO mapping: {e}")
 
-def get_order_details(order_id):
-    """Fetch order details from Razorpay API to get product information"""
-    if not order_id or not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
-        logging.info(f"⚠ Cannot fetch order - missing order_id or API credentials")
+
+def get_assessment_from_so_mapping(so_number):
+    """Look up assessment type and report type from SO ID mapping"""
+    if so_number not in SO_MAPPING:
+        logging.info(f"⚠ SO ID '{so_number}' not found in mapping - using defaults")
         return None
     
-    try:
-        url = f"https://api.razorpay.com/v1/orders/{order_id}"
-        auth = (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-        logging.info(f"→ Calling Razorpay API: {url}")
-        
-        response = requests.get(url, auth=auth, timeout=10)
-        logging.info(f"→ Razorpay API Response Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            order = response.json()
-            logging.info(f"→ Full Order Data from Razorpay:")
-            logging.info(json.dumps(order, indent=2)[:1000])
-            
-            logging.info(f"✓ Order Details Extracted:")
-            logging.info(f"  - Description: {order.get('description', 'N/A')}")
-            logging.info(f"  - Amount: {order.get('amount', 'N/A')}")
-            logging.info(f"  - Notes: {order.get('notes', {})}")
-            logging.info(f"  - Customer ID: {order.get('customer_id', 'N/A')}")
-            
-            return order
-        else:
-            logging.info(f"✗ Order fetch failed: HTTP {response.status_code}")
-            logging.info(f"→ Response: {response.text[:500]}")
-            return None
-    except Exception as e:
-        logging.info(f"✗ Order fetch error: {type(e).__name__}: {e}")
-        return None
+    mapping = SO_MAPPING[so_number]
+    logging.info(f"✓ Found in SO mapping: {mapping.get('product_name')}")
+    return mapping
+
 
 def generate_password():
     return ''.join(secrets.choice(string.ascii_letters + string.digits + "!@#$%^&*") for _ in range(12))
 
-
-def extract_report_type(description):
-    """Extract DISC type from product description - must match DISC API standards"""
-    if not description:
-        return "Basic"
-    
-    # Valid DISC types (check longer ones first to avoid partial matches)
-    valid_types = [
-        "Career entry level",
-        "Team Build",
-        "Communication",
-        "Managerial",
-        "Advanced",
-        "Student",
-        "Career",
-        "Sales",
-        "Basic",
-        "Full"
-    ]
-    
-    desc_lower = description.lower()
-    for disc_type in valid_types:
-        if disc_type.lower() in desc_lower:
-            return disc_type
-    
-    return "Basic"
 
 def register_on_disc_asia(name, display_name, email, gender, report_type):
     from datetime import timezone
@@ -116,222 +77,189 @@ def register_on_disc_asia(name, display_name, email, gender, report_type):
 
     try:
         logging.info(f"→ DISC API Call: {DISC_API_URL}")
-        logging.info(f"→ Credential: {len(DISC_CREDENTIAL)} chars | {DISC_CREDENTIAL[:20]}...")
         logging.info(f"→ Request: Name={name}, Email={email}, Type={report_type}")
         
-        r = requests.post(DISC_API_URL, json=payload, timeout=20)
-        logging.info(f"→ Response Status: {r.status_code}")
-        logging.info(f"→ Response Text: {r.text[:200]}")
+        response = requests.post(DISC_API_URL, json=payload, timeout=20)
+        logging.info(f"→ Response Status: {response.status_code}")
         
-        if r.status_code != 200:
-            logging.info(f"✗ DISC HTTP ERROR {r.status_code}: {r.text[:300]}")
-            return None
-            
-        result = r.json()
-        if result.get("success") and result.get("respondentDetails"):
-            link = result["respondentDetails"][0].get("link")
-            logging.info(f"✓ DISC SUCCESS → Link: {link}")
-            return link
-        else:
-            error = result.get('errorMessage', 'Unknown error')
-            logging.info(f"✗ DISC FAILED → {error}")
-            return None
+        if response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get("success"):
+                respondent = resp_json.get("respondentDetails", [{}])[0]
+                link = respondent.get("link", "N/A")
+                logging.info(f"✓ DISC SUCCESS → Link: {link}")
+                return {"success": True, "link": link, "respondent_id": respondent.get("respondentId")}
+        
+        logging.info(f"✗ DISC Error: {response.text[:300]}")
+        return {"success": False}
+        
     except Exception as e:
-        logging.info(f"✗ DISC ERROR → {type(e).__name__}: {e}")
-        return None
+        logging.info(f"✗ DISC Exception: {type(e).__name__}: {str(e)[:100]}")
+        return {"success": False}
 
-def register_on_harrason(name, display_name, email, gender, report_type):
-    from datetime import timezone
+
+def register_on_harrason(name, email, gender):
+    """Register user on Harrason API"""
     if not HARRASON_API_URL or not HARRASON_CREDENTIAL:
-        logging.info("HARRASON API not configured - skipping")
-        return None
+        logging.info(f"✗ Harrason API not configured")
+        return {"success": False}
     
-    payload = {
-        "credentials": {"encryptedPassword": HARRASON_CREDENTIAL},
-        "respondentDetails": [{
+    try:
+        logging.info(f"→ Harrason API Call: {HARRASON_API_URL}")
+        
+        payload = {
             "name": name,
-            "displayName": display_name,
-            "gender": gender.title(),
-            "eMailAddress": email,
-            "type": report_type
-        }],
-        "transactionDetails": {
-            "transactionId": 1,
-            "transactionDate": datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
-            "isSuccessful": True
+            "email": email,
+            "gender": gender,
+            "credential": HARRASON_CREDENTIAL
         }
-    }
-
-    try:
-        r = requests.post(HARRASON_API_URL, json=payload, timeout=20)
-        result = r.json()
-        if result.get("success") and result.get("respondentDetails"):
-            link = result["respondentDetails"][0].get("link")
-            logging.info(f"HARRASON SUCCESS → {report_type} | Link: {link}")
-            return link
-        else:
-            logging.info(f"HARRASON FAILED → {result.get('errorMessage')}")
-            return None
+        
+        response = requests.post(HARRASON_API_URL, json=payload, timeout=20)
+        logging.info(f"→ Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get("success"):
+                link = resp_json.get("link", "N/A")
+                logging.info(f"✓ Harrason SUCCESS → Link: {link}")
+                return {"success": True, "link": link}
+        
+        logging.info(f"✗ Harrason Error: {response.text[:300]}")
+        return {"success": False}
+        
     except Exception as e:
-        logging.info(f"HARRASON EXCEPTION → {e}")
-        return None
+        logging.info(f"✗ Harrason Exception: {str(e)[:100]}")
+        return {"success": False}
 
-def send_email(name, email, amount, payment_id, report_type, assessment_link, password):
-    msg = EmailMessage()
-    msg['From'] = f"{FROM_NAME} <{SMTP_EMAIL}>"
-    msg['To'] = email
-    msg['Reply-To'] = REPLY_TO_EMAIL
-    msg['Subject'] = f"Your {report_type} Assessment is Ready!"
 
-    html = f"""
-    <html>
-    <body style="font-family:Arial,sans-serif;max-width:600px;margin:30px auto;padding:20px;background:#f9f9f9;border-radius:10px;">
-        <h2 style="color:#2c3e50;text-align:center;">Payment Confirmed!</h2>
-        <p>Dear <strong>{name}</strong>,</p>
-        <p>Thank you for purchasing:</p>
-        <h3 style="background:#e3f2fd;padding:15px;border-radius:8px;text-align:center;">
-            {report_type} Assessment
-        </h3>
-        <p><strong>Amount Paid:</strong> ₹{amount:,.2f}<br>
-           <strong>Payment ID:</strong> {payment_id}</p>
-
-        <h3>Your Assessment Access</h3>
-        <p><strong>Login Email:</strong> {email}<br>
-           <strong>Password:</strong> <code style="background:#eee;padding:8px;font-size:15px;">{password}</code></p>
-
-        <div style="text-align:center;margin:30px 0;">
-            <a href="{assessment_link}" style="background:#1976d2;color:white;padding:16px 32px;text-decoration:none;border-radius:8px;font-size:18px;">
-                Start Your Assessment Now
-            </a>
-        </div>
-
-        <p style="background:#fff3cd;padding:15px;border-radius:8px;">
-            This link is unique to you. Keep this email safe.
-        </p>
-
-        <p style="font-size:12px;color:#777;text-align:center;">
-            Need help? Reply to this email.<br>
-            Bodhi Training Solutions | www.bodhih.com
-        </p>
-    </body>
-    </html>
-    """
-    msg.set_content("HTML email required.")
-    msg.add_alternative(html, subtype='html')
-
+def send_confirmation_email(name, email, assessment_type, link, password):
+    """Send confirmation email with assessment link"""
     try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
-            s.login(SMTP_EMAIL, SMTP_PASSWORD)
-            s.send_message(msg)
-        logging.info(f"EMAIL SENT → {email}")
+        if not SMTP_EMAIL or not SMTP_PASSWORD:
+            logging.info(f"✗ Email credentials not configured")
+            return False
+        
+        assessment_name = "DISC Assessment" if assessment_type == "disc" else "Harrason Assessment"
+        
+        msg = EmailMessage()
+        msg["Subject"] = f"Your {assessment_name} Link - Bodhi Training Solutions"
+        msg["From"] = f"{FROM_NAME} <{SMTP_EMAIL}>"
+        msg["To"] = email
+        msg["Reply-To"] = REPLY_TO_EMAIL
+        
+        body = f"""Hello {name},
+
+Thank you for your purchase! Your {assessment_name} is ready.
+
+Assessment Link: {link}
+
+Your temporary password: {password}
+
+Please change your password after first login.
+
+Best regards,
+{FROM_NAME}
+support@bodhih.com
+"""
+        
+        msg.set_content(body)
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(SMTP_EMAIL, SMTP_PASSWORD)
+            smtp.send_message(msg)
+        
+        logging.info(f"✓ EMAIL SENT → {email}")
+        return True
+        
     except Exception as e:
-        logging.info(f"EMAIL FAILED → {e}")
+        logging.info(f"✗ Email error: {str(e)[:100]}")
+        return False
 
-def process_single_user(name, display_name, email, user_email, gender, product_name, product_type, report_type, amount, payment_id, description):
-    """Process registration and email for a single user"""
-    # Route to appropriate API based on product type
-    assessment_link = None
-    api_type = None
-    
-    if 'harrason' in product_type or 'harrason' in product_name.lower():
-        api_type = "HARRASON"
-        assessment_link = register_on_harrason(name, display_name, email, gender, report_type)
-    elif 'disc' in product_type or 'disc' in product_name.lower() or not product_type:
-        api_type = "DISC ASIA+"
-        assessment_link = register_on_disc_asia(name, display_name, email, gender, report_type)
-    else:
-        logging.info(f"UNKNOWN PRODUCT TYPE: {product_type} - defaulting to DISC Asia+")
-        api_type = "DISC ASIA+"
-        assessment_link = register_on_disc_asia(name, display_name, email, gender, report_type)
-
-    # Send email if registration succeeded
-    if assessment_link:
-        password = generate_password()
-        send_email(name, user_email, amount, payment_id, report_type, assessment_link, password)
-        logging.info(f"✓ {name}: {api_type} Account Created + Email Sent to {user_email}")
-    else:
-        logging.info(f"✗ {name}: {api_type} REGISTRATION FAILED — No email sent")
 
 @app.route('/razorpay-webhook', methods=['POST'])
-def webhook():
-    data = request.get_json(force=True) or {}
-    if not data or data.get('event') != 'payment.captured':
-        return "ok", 200
-
-    p = data['payload']['payment']['entity']
-    notes = p.get('notes', {})
-    description  = p.get('description', '')
-    amount       = p['amount'] / 100
-    order_id     = p.get('order_id', '')
-    payment_method = p.get('method', '').upper()
-
-    logging.info("\n" + "═" * 95)
-    logging.info("NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM")
-    logging.info("═" * 95)
-    logging.info(f"Time           : {datetime.now().strftime('%d %b %Y, %I:%M %p')}")
-    logging.info(f"Amount         : ₹{amount:,.2f}")
-    logging.info(f"Payment ID     : {p['id']}")
-    logging.info(f"Order ID       : {order_id}")
-    logging.info(f"Phone          : {p.get('contact', '—')}")
-    logging.info(f"Payment Method : {payment_method}")
-    logging.info(f"Description    : {description}")
+def razorpay_webhook():
+    """Main webhook handler for Razorpay payment.captured events"""
     
-    # If no notes, try to fetch order details from Razorpay API
-    if not notes or (isinstance(notes, dict) and not notes.get('name')):
-        logging.info("→ No product info in notes, fetching from Razorpay Order API...")
-        order_details = get_order_details(order_id)
-        if order_details:
-            order_description = order_details.get('description', description)
-            logging.info(f"→ Order description from API: {order_description}")
-            product_name = order_description
-        else:
-            product_name = description
-    else:
-        product_name = description
-    
-    # Log raw payload snippet for debugging
-    raw_payload = json.dumps(data, indent=2)
-    logging.info(f"Full Raw Payload (first 800 chars):")
-    logging.info(raw_payload[:800])
-
-    # Check if notes is a list (multiple users) or dict (single user)
-    if isinstance(notes, list) and len(notes) > 0:
-        # Multiple users - process each one
-        logging.info(f"\n→ MULTIPLE USERS DETECTED: {len(notes)} users to register")
-        for user_data in notes:
-            if isinstance(user_data, dict):
-                name = user_data.get('name', 'Customer')
-                display_name = name
-                email = user_data.get('email', p.get('email', 'no-email@bodhih.com'))
-                user_email = user_data.get('user_email', email)
-                gender = user_data.get('gender', 'Male')
-                user_product_name = user_data.get('product_name', product_name)
-                product_type = user_data.get('product_type', '').lower()
-                report_type = extract_report_type(user_product_name or product_name)
-                
-                logging.info(f"\n→ Processing User: {name} ({user_email})")
-                process_single_user(name, display_name, email, user_email, gender, user_product_name, product_type, report_type, amount, p['id'], description)
-    else:
-        # Single user - original logic
-        name         = notes.get('name', p.get('contact', 'Customer')) if isinstance(notes, dict) else 'Customer'
-        display_name = name
-        email        = (notes.get('user_email') if isinstance(notes, dict) else None) or p.get('email', 'no-email@bodhih.com')
-        user_email   = (notes.get('user_email') if isinstance(notes, dict) else None) or email
-        gender       = notes.get('gender', 'Male') if isinstance(notes, dict) else 'Male'
-        product_id   = notes.get('product_id', '') if isinstance(notes, dict) else ''
-        product_type = (notes.get('product_type', '') if isinstance(notes, dict) else '').lower()
-        report_type = extract_report_type(product_name)
-
-        logging.info(f"Customer Name  : {name}")
-        logging.info(f"Email          : {email}")
-        logging.info(f"Product ID     : {product_id or '—'}")
-        logging.info(f"Product Name   : {product_name or '—'}")
-        logging.info(f"Report Type    : {report_type}")
+    try:
+        payload = request.json
         
-        process_single_user(name, display_name, email, user_email, gender, product_name, product_type, report_type, amount, p['id'], description)
+        logging.info(f"═" * 100)
+        logging.info(f"NEW PAYMENT FROM RAZORPAY WEBHOOK")
+        logging.info(f"═" * 100)
+        
+        payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        
+        payment_id = payment_entity.get("id", "N/A")
+        order_id = payment_entity.get("order_id", "")
+        description = payment_entity.get("description", "")
+        amount = payment_entity.get("amount", 0) / 100
+        contact = payment_entity.get("contact", "N/A")
+        email = payment_entity.get("email", "")
+        method = payment_entity.get("method", "N/A")
+        timestamp = datetime.now().strftime("%d %b %Y, %I:%M %p")
+        
+        logging.info(f"Time           : {timestamp}")
+        logging.info(f"Amount         : ₹{amount}")
+        logging.info(f"Payment ID     : {payment_id}")
+        logging.info(f"Order ID       : {order_id}")
+        logging.info(f"Description    : {description}")
+        logging.info(f"Phone          : {contact}")
+        logging.info(f"Email          : {email}")
+        logging.info(f"Payment Method : {method}")
+        
+        notes = payment_entity.get("notes", {})
+        
+        # Extract customer info
+        customer_email = email
+        customer_name = "Customer"
+        
+        if isinstance(notes, dict):
+            customer_email = notes.get("customer_email") or notes.get("email") or email
+            customer_name = notes.get("customer_name") or notes.get("name", "Customer")
+        elif isinstance(notes, list) and notes:
+            customer_email = notes[0].get("user_email") or notes[0].get("customer_email") or email
+            customer_name = notes[0].get("name", "Customer")
+        
+        # Look up SO in mapping (primary method)
+        assessment_mapping = get_assessment_from_so_mapping(description)
+        
+        if assessment_mapping:
+            assessment_type = assessment_mapping.get("assessment_type", "disc")
+            report_type = assessment_mapping.get("report_type", "Basic")
+            product_name = assessment_mapping.get("product_name", "Unknown")
+        else:
+            # Fallback: determine from description if SO not in mapping
+            assessment_type = "disc"
+            report_type = "Basic"
+            product_name = description
+        
+        logging.info(f"\nExtracted Data:")
+        logging.info(f"  Product Name   : {product_name}")
+        logging.info(f"  Customer Name  : {customer_name}")
+        logging.info(f"  Customer Email : {customer_email}")
+        logging.info(f"  Assessment Type: {assessment_type}")
+        logging.info(f"  Report Type    : {report_type}")
+        
+        # Register based on type
+        if assessment_type == "harrason":
+            gender = "Male"  # Default
+            result = register_on_harrason(customer_name, customer_email, gender)
+        else:
+            gender = "Male"  # Default
+            result = register_on_disc_asia(customer_name, customer_name, customer_email, gender, report_type)
+        
+        # Send email if registration successful
+        if result.get("success"):
+            password = generate_password()
+            send_confirmation_email(customer_name, customer_email, assessment_type, result.get("link", "N/A"), password)
+        
+        logging.info(f"═" * 100)
+        return {"status": "ok"}, 200
+        
+    except Exception as e:
+        logging.info(f"✗ WEBHOOK ERROR: {type(e).__name__}: {str(e)}")
+        return {"status": "error"}, 500
 
-    logging.info("═" * 95 + "\n")
-    return "OK", 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000, debug=False)
