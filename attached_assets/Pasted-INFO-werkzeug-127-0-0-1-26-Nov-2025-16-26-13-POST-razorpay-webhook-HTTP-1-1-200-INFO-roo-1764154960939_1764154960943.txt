@@ -1,0 +1,55 @@
+INFO:werkzeug:127.0.0.1 - - [26/Nov/2025 16:26:13] "POST /razorpay-webhook HTTP/1.1" 200 -
+INFO:root:
+═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:Time           : 26 Nov 2025, 04:29 PM
+INFO:root:Amount         : ₹0.05
+INFO:root:Payment ID     : pay_test123456789
+INFO:root:Order ID       :
+INFO:root:Customer Name  : Vansh Jhamb
+INFO:root:Email          : test@example.com
+INFO:root:Phone          : 9880743332
+INFO:root:Payment Method : UPI
+INFO:root:Card/Network   : —
+INFO:root:Description    : DISC Asia+ Basic Report
+INFO:root:Product ID     : —
+INFO:root:Product Name   : DISC Asia+ Basic Report
+INFO:root:Product Type   : —
+INFO:root:Report Type    : DISC Asia+ Basic
+INFO:root:Full Raw Payload (first 800 chars):
+INFO:root:{
+  "event": "payment.captured",
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_test123456789",
+        "amount": 5,
+        "currency": "INR",
+        "status": "captured",
+        "method": "upi",
+        "email": "test@example.com",
+        "contact": "9880743332",
+        "description": "DISC Asia+ Basic Report",
+        "notes": {
+          "name": "Vansh Jhamb",
+          "user_email": "vanshjhamb9@gmail.com",
+          "gender": "Male"
+        }
+      }
+    }
+  }
+}
+INFO:root:→ DISC API Call: https://discapi.discasiaplus.org/api/DISC/Respondent_and_Report_Details_Bodhih
+INFO:root:→ Credential Length: 0 chars | First 20: ...
+INFO:root:→ Payload: Name=Vansh Jhamb, Email=test@example.com, Type=DISC Asia+ Basic
+INFO:root:→ DISC Response Status: 200
+INFO:root:✗ DISC FAILED → Unable to authenticate the request due to invalid credentials
+INFO:root:✗ Full Response: {
+  "success": false,
+  "respondentDetails": null,
+  "successMessage": null,
+  "errorMessage": "Unable to authenticate the request due to invalid credentials"
+}
+INFO:root:DISC ASIA+ REGISTRATION FAILED — No email sent
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════

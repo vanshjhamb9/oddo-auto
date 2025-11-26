@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:Time           : 26 Nov 2025, 05:12 PM
+INFO:root:Amount         : ₹0.05
+INFO:root:Payment ID     : pay_test123456789
+INFO:root:Order ID       :
+INFO:root:Customer Name  : Vansh Jhamb
+INFO:root:Email          : test@example.com
+INFO:root:Phone          : —
+INFO:root:Payment Method :
+INFO:root:Card/Network   : —
+INFO:root:Description    : DISC Asia+ Basic Report
+INFO:root:Product ID     : —
+INFO:root:Product Name   : DISC Asia+ Basic Report
+INFO:root:Product Type   : —
+INFO:root:Report Type    : Basic
+INFO:root:Full Raw Payload (first 800 chars):
+INFO:root:{
+  "event": "payment.captured",
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_test123456789",
+        "amount": 5,
+        "currency": "INR",
+        "email": "test@example.com",
+        "description": "DISC Asia+ Basic Report",
+        "notes": {
+          "name": "Vansh Jhamb",
+          "user_email": "vanshjhamb9@gmail.com",
+          "gender": "Male"
+        }
+      }
+    }
+  }
+}
+INFO:root:→ DISC API Call: https://discapi.discasiaplus.org/api/DISC/Respondent_and_Report_Details_Bodhih
+INFO:root:→ Credential: 32 chars | vezHgzd1EueI3clvF/1k...
+INFO:root:→ Request: Name=Vansh Jhamb, Email=test@example.com, Type=Basic
+INFO:root:→ Response Status: 200
+INFO:root:→ Response Text: {"success":true,"respondentDetails":[{"respondentId":"649651017","name":"Vansh Jhamb","displayName":"Vansh Jhamb","gender":"Male","eMailAddress":"test@example.com","link":"https://discasiaplus.org/Lan
+INFO:root:✓ DISC SUCCESS → Link: https://discasiaplus.org/Language_Choice.aspx?Res_ID=NjQ5NjUxMDE3
+INFO:root:EMAIL SENT → test@example.com
+INFO:root:SUCCESS: DISC ASIA+ Account Created + Email Sent
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════
+
+INFO:werkzeug:127.0.0.1 - - [26/Nov/2025 17:12:51] "POST /razorpay-webhook HTTP/1.1" 200 -

@@ -1,0 +1,53 @@
+INFO:werkzeug:WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.100.101:5000
+INFO:werkzeug:Press CTRL+C to quit
+INFO:root:
+═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:NEW PAYMENT FROM ODOO WEBSITE — BODHIH.COM
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════
+INFO:root:Time           : 26 Nov 2025, 04:48 PM
+INFO:root:Amount         : ₹0.05
+INFO:root:Payment ID     : pay_test123456789
+INFO:root:Order ID       :
+INFO:root:Customer Name  : Vansh Jhamb
+INFO:root:Email          : test@example.com
+INFO:root:Phone          : —
+INFO:root:Payment Method :
+INFO:root:Card/Network   : —
+INFO:root:Description    : DISC Asia+ Basic Report
+INFO:root:Product ID     : —
+INFO:root:Product Name   : DISC Asia+ Basic Report
+INFO:root:Product Type   : —
+INFO:root:Report Type    : DISC Asia+ Basic
+INFO:root:Full Raw Payload (first 800 chars):
+INFO:root:{
+  "event": "payment.captured",
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_test123456789",
+        "amount": 5,
+        "currency": "INR",
+        "email": "test@example.com",
+        "description": "DISC Asia+ Basic Report",
+        "notes": {
+          "name": "Vansh Jhamb",
+          "user_email": "vanshjhamb9@gmail.com",
+          "gender": "Male"
+        }
+      }
+    }
+  }
+}
+INFO:root:→ DISC API Call: https://discapi.discasiaplus.org/api/DISC/Respondent_and_Report_Details_Bodhih
+INFO:root:→ Credential: 0 chars | ...
+INFO:root:→ Request: Name=Vansh Jhamb, Email=test@example.com, Type=DISC Asia+ Basic
+INFO:root:→ Response Status: 200
+INFO:root:→ Response Text: {"success":false,"respondentDetails":null,"successMessage":null,"errorMessage":"Unable to authenticate the request due to invalid credentials"}
+INFO:root:✗ DISC FAILED → Unable to authenticate the request due to invalid credentials
+INFO:root:DISC ASIA+ REGISTRATION FAILED — No email sent
+INFO:root:═══════════════════════════════════════════════════════════════════════════════════════════════
+
+INFO:werkzeug:127.0.0.1 - - [26/Nov/2025 16:48:14] "POST /razorpay-webhook HTTP/1.1" 200 -
