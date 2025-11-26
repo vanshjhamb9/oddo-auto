@@ -18,13 +18,13 @@ app = Flask(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 DISC_API_URL       = os.environ.get("DISC_API_URL", "https://discapi.discasiaplus.org/api/DISC/Respondent_and_Report_Details_Bodhih")
-DISC_CREDENTIAL    = os.environ.get("DISC_CREDENTIAL", "")
+DISC_CREDENTIAL    = os.environ.get("DISC_CREDENTIAL", "vezHgzd1EueI3clvF/1kNnMyCITD9UwC")
 
 HARRASON_API_URL   = os.environ.get("HARRASON_API_URL", "")
 HARRASON_CREDENTIAL = os.environ.get("HARRASON_CREDENTIAL", "")
 
-SMTP_EMAIL         = os.environ.get("SMTP_EMAIL", "")
-SMTP_PASSWORD      = os.environ.get("SMTP_PASSWORD", "")
+SMTP_EMAIL         = os.environ.get("SMTP_EMAIL", "info@inowix.in")
+SMTP_PASSWORD      = os.environ.get("SMTP_PASSWORD", "jxrmhihcvqlqojqa")
 FROM_NAME          = os.environ.get("FROM_NAME", "Bodhi Training Solutions")
 REPLY_TO_EMAIL     = os.environ.get("REPLY_TO_EMAIL", "support@bodhih.com")
 
